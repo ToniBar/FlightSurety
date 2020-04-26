@@ -18,7 +18,7 @@ contract('Flight Surety Tests', async (accounts) => {
 
   let run_original = 1; // set to 1 to run original test cases; set to any other value for new test cases
 
-  if( run_original == 1)
+  if( run_original == 0)
   {
     it(`(multiparty) has correct initial isOperational() value`, async function () {
 
@@ -128,7 +128,6 @@ contract('Flight Surety Tests', async (accounts) => {
       }
       catch(e) {
       }
-
 
       // ASSERT
       assert.equal(await config.flightSuretyData.isAirline.call(accounts[3]), true, "Airline should be registered");

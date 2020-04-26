@@ -31,6 +31,9 @@ contract FlightSuretyData {
     // Event fired each time an oracle submits a response
     event FlightStatusInfo(string flight, uint256 timestamp, uint8 status, bool verified);
     event RegisterFlight(bytes32 key, bool hasValue);
+    event CreditedInsurees(uint amount, uint length, bytes32 key);
+    event Buy(bytes32 key, address buyer);
+    event GetKey(bytes32 key, address airline, string flight, uint256 timestamp);
 
     struct Fund
     {
@@ -282,11 +285,9 @@ contract FlightSuretyData {
                             //requireIsCallerAuthorized
     {
         bytes32 f_key = getFlightKey(airl, flight, timestamp);
-        FlightStatus memory fstat = FlightStatus({hasStatus:false, status:0});
-        Flight memory f = Flight({airline: airl, insuranceAmount: insAmount, status: fstat, hasValue: true });
-        flights[f_key] = f;
+        flights[f_key] = Flight({airline: airl, insuranceAmount: insAmount, status: FlightStatus({hasStatus:false, status:0}), hasValue: true });
 
-        emit RegisterFlight(f_key, f.hasValue);
+        emit RegisterFlight(f_key, flights[f_key].hasValue);
     }
 
     function getMultiCalls(address airline) external view returns(address[])
@@ -307,8 +308,9 @@ contract FlightSuretyData {
                             requireIsOperational
     {
         airlines.push(airline);
-        funds[airline].balance = 0;
-        funds[airline].hasValue = true;
+
+        funds[airline] = Fund({balance: 0, isFunded: false, hasValue: true});
+
         delete multiCalls[airline];
     }
 
@@ -342,6 +344,9 @@ contract FlightSuretyData {
 
         insurees[f_key].push(buyer);
         funds[f.airline].balance = funds[f.airline].balance.add(f.insuranceAmount);
+
+       // emit Buy(f_key, buyer);
+        emit GetKey(f_key, airline, flight, timestamp);
     }
 
     /**
@@ -361,11 +366,19 @@ contract FlightSuretyData {
         uint length = insureesArray.length;
         uint amount = flights[getFlightKey(airline, flight, timestamp)].insuranceAmount.mul(3).div(2);
 
+//        emit bv
+//        hghg(insureesArray[0], insureesAccounts[insureesArray[0]]);
+
         for(uint i = 0; i < length; i++)
         {
             insureesAccounts[insureesArray[i]] = insureesAccounts[insureesArray[i]].add(amount);
             funds[airline].balance = funds[airline].balance.sub(amount);
         }
+
+        delete insurees[f_key];
+
+        emit GetKey(f_key, airline, flight, timestamp);
+        //emit CreditedInsurees(amount, length, f_key);
     }
 
     /**
@@ -378,6 +391,7 @@ contract FlightSuretyData {
                             )
                             external
     {
+        insureesAccounts[insuree] = 0;
         insuree.transfer(insureesAccounts[insuree]);
     }
 

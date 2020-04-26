@@ -113,7 +113,7 @@ contract FlightSuretyApp {
     /********************************************************************************************/
 
     function withdraw()
-                        external
+                        public
                         requireIsOperational
     {
         require(flightData.getAccountBalance(msg.sender) > 0, "Sender has no money on ");
@@ -123,12 +123,20 @@ contract FlightSuretyApp {
         emit Withdraw(msg.sender, flightData.getAccountBalance(msg.sender));
     }
 
-//for testing
+    // for testing
+    function getAccountBalance(address insuree)
+                        public
+                        returns(uint)
+    {
+        return flightData.getAccountBalance(insuree);
+    }
+
+    //for testing
     function isRegistered()
                             public
                             returns(uint)
     {
-        return flightData.getNrRegisteredAirlines();//isFundedAirline(0xf17f52151EbEF6C7334FAD080c5704D77216b732);
+        return flightData.getNrRegisteredAirlines();
     }
 
     function fundAirline
@@ -137,7 +145,6 @@ contract FlightSuretyApp {
                         payable
                         requireIsOperational
     {
-        require(1 == 0, "ERROR IN FUNDAIRLINE()");
         require(flightData.isRegisteredAirline(msg.sender), "Airline is not registered, so funding not possible");
         require(msg.value >= 10 ether, "At least 10 ETH needed for funding of airline");
 
@@ -158,10 +165,9 @@ contract FlightSuretyApp {
                             requireIsOperational
                             returns(bool success, uint256 votes)
     {
-        require(1 == 0, "ERROR IN REGISTERAIRLINE()");
         require(airline != address(0), "Invalid airline address.");
         require(!flightData.isRegisteredAirline(airline), "Airline is already registered");
-        //require(flightData.isFundedAirline(msg.sender), "Airline is not funded and can therefore not register airlines.");
+        require(flightData.isFundedAirline(msg.sender), "Airline is not funded and can therefore not register airlines.");
 
         uint nr_airlines = flightData.getNrRegisteredAirlines();
         success = false;
@@ -197,23 +203,8 @@ contract FlightSuretyApp {
 
         return (success, votes);
     }
-
-    // FOR TESTING\
-    function isRegisteredFlight() public returns(bool)
-    {
-        address airline = 0xf17f52151EbEF6C7334FAD080c5704D77216b732;
-        uint256 timestamp = 1587674402;
-
-        return flightData.isOperational();//.isRegisteredFlight(airline, "SN4563", timestamp);
-    }
-
-    // FOR TESTING
-    function getAirlineFunds() public returns(uint256)
-    {
-        flightData.getAirlineFund(0xf17f52151EbEF6C7334FAD080c5704D77216b732);
-    }
-
-   /**
+    
+    /**
     * @dev Register a future flight for insuring.
     *
     */
@@ -227,7 +218,6 @@ contract FlightSuretyApp {
                                 external
                                 requireIsOperational
     {
-        require(!flightData.isRegisteredAirline(msg.sender), "Airline is registered !!!!!!");
         require(flightData.isRegisteredAirline(msg.sender), "Non registered airlines can't register flights");
         require(flightData.isFundedAirline(msg.sender), "Non funded airlines can't register flights");
 
@@ -249,8 +239,8 @@ contract FlightSuretyApp {
                                 )
                                 public
     {
-        if( (statusCode == STATUS_CODE_LATE_TECHNICAL)
-                || (statusCode == STATUS_CODE_LATE_AIRLINE))
+        if( (statusCode == STATUS_CODE_LATE_TECHNICAL) ||
+                        (statusCode == STATUS_CODE_LATE_AIRLINE))
         {
             flightData.creditInsurees(airline, flight, timestamp);
         }
@@ -296,7 +286,7 @@ contract FlightSuretyApp {
                 payable
                 requireIsOperational
     {
-        //require(msg.value <= 1 ether, "Insurance amount can't be higer than 1 ether");
+        require(msg.value <= 1 ether, "Insurance amount can't be higer than 1 ether");
         require(flightData.getInsuranceAmount(airline, flight, timestamp) == msg.value, 'Payout not equal to insurance amount');
         require(flightData.isRegisteredFlight(airline, flight, timestamp), "Can't buy insurance for a flight that is not registered");
         require(flightData.isInsuranceCredited(airline, flight, timestamp) == false,
@@ -398,8 +388,8 @@ contract FlightSuretyApp {
                         )
                         external
     {
-        require((oracles[msg.sender].indexes[0] == index) || (oracles[msg.sender].indexes[1] == index)
-         || (oracles[msg.sender].indexes[2] == index), "Index does not match oracle request");
+        require((oracles[msg.sender].indexes[0] == index) || (oracles[msg.sender].indexes[1] == index) ||
+          (oracles[msg.sender].indexes[2] == index), "Index does not match oracle request");
 
 
         bytes32 key = keccak256(abi.encodePacked(index, airline, flight, timestamp));
@@ -411,6 +401,8 @@ contract FlightSuretyApp {
         // oracles respond with the *** same *** information
         emit OracleReport(airline, flight, timestamp, statusCode);
         if (oracleResponses[key].responses[statusCode].length >= MIN_RESPONSES) {
+            oracleResponses[key].isOpen = false;
+            delete oracleResponses[key].responses[statusCode];
 
             emit FlightStatusInfo(airline, flight, timestamp, statusCode);
 
